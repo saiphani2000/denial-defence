@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Denial Defense — Multi-Agent Insurance Appeal Harness</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+            background: #f5f5f5; color: #1a1a1a; padding: 16px; line-height: 1.6;
+        }
+        .header { background: #2c3e50; color: white; padding: 20px 24px; border-radius: 8px; margin-bottom: 16px; }
+        .header h1 { font-size: 22px; margin-bottom: 4px; }
+        .header p { font-size: 13px; opacity: 0.85; }
+        .disclaimer {
+            background: #fffbeb; border: 1px solid #f59e0b; color: #92400e;
+            padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 13px;
+        }
+        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 16px; }
+        .panel h2 { font-size: 16px; margin-bottom: 12px; color: #2c3e50; }
+        .case-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+        .case-button {
+            background: #3498db; color: white; border: none; padding: 16px; border-radius: 6px;
+            cursor: pointer; font-size: 14px; font-family: inherit; text-align: left;
+        }
+        .case-button:hover { background: #2980b9; }
+        .case-button:disabled { background: #95a5a6; cursor: not-allowed; }
+        .compare-toggle { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 14px; }
+        textarea, input[type=text] {
+            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;
+            font-family: inherit; font-size: 13px; margin-bottom: 8px;
+        }
+        textarea { min-height: 120px; resize: vertical; }
+        .btn { background: #27ae60; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 14px; }
+        .btn-secondary { background: #64748b; }
+        .btn:hover { opacity: 0.92; }
+        .loading { display: none; text-align: center; padding: 32px; background: white; border-radius: 8px; }
+        .loading.active { display: block; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 44px; height: 44px; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .progress-steps { text-align: left; max-width: 400px; margin: 16px auto 0; font-size: 13px; color: #555; }
+        .progress-steps li { margin: 4px 0; }
+        .progress-steps li.active { color: #3498db; font-weight: 600; }
+        .results { display: none; }
+        .results.active { display: block; }
+        .section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+        .section-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #3498db; }
+        .section.critic .section-header { border-color: #e74c3c; }
+        .section.final .section-header { border-color: #27ae60; }
+        .agent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+        .json-display, .verdict-text {
+            background: #f8f9fa; padding: 12px; border-radius: 4px; border: 1px solid #dee2e6;
+            font-size: 12px; white-space: pre-wrap; word-wrap: break-word;
+        }
+        .verdict-text { font-size: 14px; line-height: 1.75; }
+        .critique-item { background: #fff5f5; padding: 12px; border-radius: 4px; border: 1px solid #feb2b2; margin-bottom: 10px; }
+        .metrics-bar {
+            background: #2c3e50; color: white; padding: 12px 16px; border-radius: 6px;
+            display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; margin-bottom: 16px;
+        }
+        .metric-value { color: #10b981; font-weight: 600; }
+        .checklist { list-style: none; }
+        .checklist li { padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+        .checklist li::before { content: "☐ "; color: #3498db; }
+        .comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 768px) { .comparison-grid { grid-template-columns: 1fr; } }
+        .compare-col { padding: 16px; border-radius: 6px; max-height: 500px; overflow-y: auto; }
+        .compare-col.baseline { border-left: 4px solid #888; background: #f9fafb; }
+        .compare-col.harness { border-left: 4px solid #10b981; background: #f0fdf4; }
+        .error { background: #fff5f5; color: #c53030; padding: 16px; border-radius: 8px; border: 1px solid #feb2b2; }
+        .export-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+        .tab { padding: 8px 14px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 13px; }
+        .tab.active { background: #3498db; color: white; border-color: #3498db; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Denial Defense — Multi-Agent Insurance Appeal Harness</h1>
+        <p>Supervisor-worker architecture with adversarial critic and round-based revision</p>
+    </div>
+
+    <div class="disclaimer">
+        <strong>Research prototype — not legal or medical advice.</strong>
+        Generated appeals must be reviewed by qualified professionals before submission.
+        This tool does not submit appeals to insurers or access patient medical records.
+    </div>
+
+    <div class="panel compare-toggle">
+        <input type="checkbox" id="compareMode" />
+        <label for="compareMode">Side-by-side comparison (baseline vs harness)</label>
+        &nbsp;|&nbsp;
+        <input type="checkbox" id="streamMode" checked />
+        <label for="streamMode">Live agent progress (SSE)</label>
+    </div>
+
+    <div class="panel">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('demo')">Demo Cases</button>
+            <button class="tab" onclick="switchTab('custom')">Custom Case</button>
+        </div>
+        <div id="tab-demo" class="tab-panel active">
+            <h2>Select a Demo Case</h2>
+            <div class="case-buttons">
+                {% for case_id, case_data in cases.items() %}
+                <button class="case-button" onclick="runCase('{{ case_id }}')">
+                    <strong>{{ case_data.display_name }}</strong><br>
+                    <small>{{ case_data.patient_context.get('diagnosis_text', case_data.patient_context.get('diagnosis', 'N/A')) }}</small>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+        <div id="tab-custom" class="tab-panel">
+            <h2>Paste Your Denial Letter</h2>
+            <input type="text" id="customName" placeholder="Case name (optional)" />
+            <textarea id="customDenial" placeholder="Paste denial letter text..."></textarea>
+            <textarea id="customContext" placeholder="Patient context (clinical history, diagnoses, failed treatments...)"></textarea>
+            <button class="btn" onclick="runCustom()">Run Harness</button>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <h2 id="loadingTitle">Running harness...</h2>
+        <div class="timer" id="timer" style="font-size:22px;color:#3498db;margin:8px 0;">0s</div>
+        <ul class="progress-steps" id="progressSteps">
+            <li id="step-start">Queued</li>
+            <li id="step-medical_necessity">Medical Necessity agent</li>
+            <li id="step-policy_citation">Policy Citation agent</li>
+            <li id="step-precedent">Precedent agent</li>
+            <li id="step-critic">Insurer critic</li>
+            <li id="step-supervisor">Supervisor synthesis</li>
+        </ul>
+    </div>
+
+    <div class="results" id="results"></div>
+
+    <script>
+        let timerInterval = null, startTime = null, eventSource = null;
+
+        function switchTab(name) {
+            document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (name === 'demo' && i === 0) || (name === 'custom' && i === 1)));
+            document.getElementById('tab-demo').classList.toggle('active', name === 'demo');
+            document.getElementById('tab-custom').classList.toggle('active', name === 'custom');
+        }
+
+        function startLoading(title) {
+            document.querySelector('.panel').style.display = 'none';
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('loadingTitle').textContent = title;
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                document.getElementById('timer').textContent = Math.floor((Date.now() - startTime) / 1000) + 's';
+            }, 200);
+            document.querySelectorAll('.progress-steps li').forEach(li => li.classList.remove('active'));
+            document.getElementById('step-start').classList.add('active');
+        }
+
+        function markStep(step) {
+            const el = document.getElementById('step-' + step);
+            if (el) el.classList.add('active');
+        }
+
+        function stopLoading() {
+            clearInterval(timerInterval);
+            if (eventSource) { eventSource.close(); eventSource = null; }
+            document.getElementById('loading').classList.remove('active');
+        }
+
+        function runCase(caseId) {
+            const compare = document.getElementById('compareMode').checked;
+            const stream = document.getElementById('streamMode').checked && !compare;
+            if (stream) return runCaseStream(caseId);
+            startLoading(compare ? 'Running baseline + harness (parallel)...' : 'Running multi-agent harness...');
+            fetch(compare ? `/compare/${caseId}` : `/run/${caseId}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => { stopLoading(); data.status === 'error' ? showError(data.message) : (compare ? displayComparison(data) : displayResults(data)); })
+                .catch(e => { stopLoading(); showError(e.toString()); });
+        }
+
+        function runCaseStream(caseId) {
+            startLoading('Running harness with live progress...');
+            fetch(`/run/${caseId}/stream`, { method: 'POST' })
+                .then(r => r.body.getReader())
+                .then(reader => {
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    function read() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) return;
+                            buffer += decoder.decode(value, { stream: true });
+                            const parts = buffer.split('\n\n');
+                            buffer = parts.pop();
+                            parts.forEach(chunk => {
+                                if (!chunk.startsWith('data: ')) return;
+                                const data = JSON.parse(chunk.slice(6));
+                                if (data.step) markStep(data.step);
+                                if (data.done) {
+                                    stopLoading();
+                                    if (data.error) showError(data.error);
+                                    else displayResults(data.result);
+                                }
+                            });
+                            read();
+                        });
+                    }
+                    read();
+                })
+                .catch(e => { stopLoading(); showError(e.toString()); });
+        }
+
+        function runCustom() {
+            const denial = document.getElementById('customDenial').value.trim();
+            const context = document.getElementById('customContext').value.trim();
+            const name = document.getElementById('customName').value.trim() || 'Custom Case';
+            if (!denial || !context) { alert('Denial letter and patient context are required.'); return; }
+            startLoading('Running custom case...');
+            fetch('/run/custom', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ denial_letter: denial, patient_context: context, display_name: name })
+            })
+                .then(r => r.json())
+                .then(data => { stopLoading(); data.status === 'error' ? showError(data.message) : displayResults(data); })
+                .catch(e => { stopLoading(); showError(e.toString()); });
+        }
+
+        function metricsHtml(m) {
+            if (!m) return '';
+            const carc = (m.carc_codes_matched || []).join(', ') || 'none';
+            const prot = (m.federal_protections_found || []).join(', ').replace(/_/g, ' ') || 'none';
+            return `<div class="metrics-bar">
+                <span>⏱ ${m.elapsed_seconds}s</span>
+                <span>🎯 CARC: <span class="metric-value">${carc}</span></span>
+                <span>⚖ Protections: <span class="metric-value">${prot}</span></span>
+                <span>🔁 Rounds: <span class="metric-value">${m.rounds_completed || 0}</span></span>
+                <span>💬 Critiques: <span class="metric-value">${m.critiques_generated || 0}</span></span>
+                <span>📊 Tokens: <span class="metric-value">${m.session_tokens || '—'}</span></span>
+            </div>`;
+        }
+
+        function agentGrid(r) {
+            return `<div class="agent-grid">
+                <div><strong>Medical Necessity</strong><div class="json-display">${JSON.stringify(r.medical_necessity || {}, null, 2)}</div></div>
+                <div><strong>Policy Citation</strong><div class="json-display">${JSON.stringify(r.policy_citation || {}, null, 2)}</div></div>
+                <div><strong>Precedent</strong><div class="json-display">${JSON.stringify(r.precedent || {}, null, 2)}</div></div>
+            </div>`;
+        }
+
+        function displayResults(data) {
+            const checklist = (data.evidence_checklist || []).map(i => `<li>${escapeHtml(i)}</li>`).join('');
+            const html = `
+                <div class="section"><div class="section-header">Denial Letter</div>
+                    <div class="json-display">${JSON.stringify(data.denial, null, 2)}</div></div>
+                ${metricsHtml(data.metrics)}
+                ${checklist ? `<div class="section"><div class="section-header">Evidence Checklist</div><ul class="checklist">${checklist}</ul></div>` : ''}
+                <div class="section"><div class="section-header">Round 1 — Patient Agents</div>${agentGrid(data.round_1 || {})}</div>
+                <div class="section"><div class="section-header">Round 2 — Revised Agents</div>${agentGrid(data.round_2 || {})}</div>
+                <div class="section critic"><div class="section-header">Critiques</div>
+                    ${(data.critiques || []).map((c, i) => `<div class="critique-item"><strong>Round ${i+1}</strong><div class="json-display">${JSON.stringify(c, null, 2)}</div></div>`).join('')}</div>
+                <div class="section final"><div class="section-header">Final Appeal Letter</div>
+                    <div class="verdict-text" id="appealText">${escapeHtml(data.final_verdict)}</div>
+                    <div class="export-bar">
+                        <button class="btn btn-secondary" onclick="exportAppeal('txt')">Download TXT</button>
+                        <button class="btn btn-secondary" onclick="exportAppeal('docx')">Download DOCX</button>
+                        <button class="btn" onclick="refresh()">Run Another Case</button>
+                    </div></div>`;
+            document.getElementById('results').innerHTML = html;
+            document.getElementById('results').classList.add('active');
+        }
+
+        function displayComparison(data) {
+            const h = data.harness;
+            const html = `
+                <div class="section"><div class="section-header">Original Denial</div>
+                    <div class="json-display">${JSON.stringify(data.denial, null, 2)}</div></div>
+                ${metricsHtml(h.metrics)}
+                <div class="section"><div class="section-header">Side-by-Side Comparison</div>
+                    <div class="comparison-grid">
+                        <div class="compare-col baseline"><h3>${escapeHtml(data.baseline.label)}</h3>
+                            <pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;">${escapeHtml(data.baseline.appeal_letter)}</pre></div>
+                        <div class="compare-col harness"><h3>${escapeHtml(h.label)}</h3>
+                            <pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;" id="appealText">${escapeHtml(h.final_verdict)}</pre></div>
+                    </div>
+                    <div class="export-bar" style="margin-top:16px;">
+                        <button class="btn btn-secondary" onclick="exportAppeal('txt')">Download Harness (TXT)</button>
+                        <button class="btn btn-secondary" onclick="exportAppeal('docx')">Download Harness (DOCX)</button>
+                    </div>
+                </div>
+                <div class="section"><div class="section-header">Round 1</div>${agentGrid(h.round_1 || {})}</div>
+                <div class="section"><div class="section-header">Round 2</div>${agentGrid(h.round_2 || {})}</div>
+                <button class="btn" onclick="refresh()" style="margin-top:12px;">Run Another Case</button>`;
+            document.getElementById('results').innerHTML = html;
+            document.getElementById('results').classList.add('active');
+        }
+
+        function exportAppeal(fmt) {
+            const el = document.getElementById('appealText');
+            if (!el) return;
+            const text = el.textContent;
+            fetch('/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ appeal_text: text, format: fmt, filename: 'appeal_letter' })
+            }).then(r => r.blob()).then(blob => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `appeal_letter.${fmt}`;
+                a.click();
+            });
+        }
+
+        function escapeHtml(text) {
+            if (typeof text !== 'string') text = String(text);
+            return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function showError(message) {
+            document.getElementById('results').innerHTML = `<div class="error"><strong>Error:</strong> ${escapeHtml(message)}</div>
+                <button class="btn" onclick="refresh()" style="margin-top:12px;">Try Again</button>`;
+            document.getElementById('results').classList.add('active');
+        }
+
+        function refresh() {
+            document.getElementById('results').classList.remove('active');
+            document.querySelector('.panel').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
