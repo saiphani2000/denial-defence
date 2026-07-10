@@ -241,9 +241,9 @@ If you use this work, please cite:
 ```bibtex
 @software{denial_defense_2026,
   title = {Denial Defense: Multi-Agent AI for Insurance Appeal Letters},
-  author = {Sagar, Abhishek},
+  author = {Sai Phani, KR},
   year = {2026},
-  url = {https://github.com/SandaAbhishekSagar/denial-defense}
+  url = {https://github.com/saiphani2000/denial-defense}
 }
 ```
 
@@ -257,8 +257,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Contact
 
-**Author:** Abhishek Sagar  
-**Email:** sabhisheksagar200@gmail.com  
+**Author:** Sai Phani Kanamatha Reddy 
+**Email:** saiphani5767@gmail.com  
 **Demo:** [http://localhost:5000](http://localhost:5000) (after running locally)
 
 ---
